@@ -1,0 +1,17 @@
+{
+  "name": "com.alontalmi.datahandler",
+  "version": "1.0.0",
+  "displayName": "Data Handler",
+  "description": "A relativly simple to use data save and load system with data caching.",
+  "keywords": [
+    "Saving",
+    "Data",
+    "ease of use",
+    "tool"
+  ],
+  "author": {
+    "name": "Alon Talmi",
+    "email": "alontalmi@protonmail.com",
+    "url": "https://github.com/Phoder1"
+  }
+}

@@ -244,6 +244,14 @@ namespace DataSaving
         protected virtual void OnSaved() { }
 
         public virtual void ValueChanged() => _isDirty = true;
+        protected void Setter<T>(ref T data, T value)
+        {
+            if ((data == null && value == null) || (data != null && data.Equals(value)))
+                return;
+            data = value;
+
+            ValueChanged();
+        }
     }
     #region Lists
     [Serializable]

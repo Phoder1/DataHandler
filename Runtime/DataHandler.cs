@@ -325,6 +325,33 @@ namespace DataSaving
             collection.RemoveAt(index);
             ValueChanged();
         }
+        public int FindIndex(int startIndex, int count, Predicate<T> match) => collection.FindIndex(startIndex, count, match);
+        public int FindIndex(int startIndex, Predicate<T> match) => collection.FindIndex(startIndex, match);
+        public int FindIndex(Predicate<T> match) => FindIndex(match);
+        public void Sort(Comparison<T> comparison)
+        {
+            collection.Sort(comparison);
+
+            ValueChanged();
+        }
+        public void Sort(int index, int count, IComparer<T> comparer)
+        {
+            collection.Sort(index, count, comparer);
+
+            ValueChanged();
+        }
+        public void Sort()
+        {
+            collection.Sort();
+
+            ValueChanged();
+        }
+        public void Sort(IComparer<T> comparer)
+        {
+            collection.Sort(comparer);
+
+            ValueChanged();
+        }
         public IEnumerator<T> GetEnumerator() => collection.GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         #endregion

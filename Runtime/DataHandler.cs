@@ -327,7 +327,7 @@ namespace DataSaving
         }
         public int FindIndex(int startIndex, int count, Predicate<T> match) => collection.FindIndex(startIndex, count, match);
         public int FindIndex(int startIndex, Predicate<T> match) => collection.FindIndex(startIndex, match);
-        public int FindIndex(Predicate<T> match) => FindIndex(match);
+        public int FindIndex(Predicate<T> match) => collection.FindIndex(match);
         public void Sort(Comparison<T> comparison)
         {
             collection.Sort(comparison);

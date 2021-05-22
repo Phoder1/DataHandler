@@ -268,8 +268,7 @@ namespace DataSaving
     public abstract class BaseDirtyList<T> : DirtyData, ICollection<T>, IEnumerable<T>, IEnumerable, IList<T>, IReadOnlyCollection<T>, IReadOnlyList<T>
     {
         #region List
-        [SerializeField]
-        protected List<T> collection = new List<T>();
+        public List<T> collection = new List<T>();
         public T this[int index]
         {
             get => collection[index];

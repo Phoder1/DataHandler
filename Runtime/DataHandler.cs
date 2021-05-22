@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using UnityEngine;
+using System.Linq;
 
 namespace DataSaving
 {
@@ -12,29 +13,125 @@ namespace DataSaving
     {
         private static readonly object WriteReadLock = new object();
         public static string persistentPath = Application.persistentDataPath;
-        private static bool _autoSaveEnabled = false;
-        public static bool AutoSaveEnabled
-        {
-            get => _autoSaveEnabled;
-            set
-            {
-                if (value == _autoSaveEnabled)
-                    return;
+        #region AutoSave
+        ///// <summary>
+        ///// The autosave interval in seconds.
+        ///// </summary>
+        //public static int autoSaveInterval = 300;
+        //private static bool _autoSaveEnabled = false;
+        //const float autoSaveRetryDelay = 2;
+        //private static int retryCount;
+        //const int maxRetryTime = 10;
+        //public static event Action<bool> AutoSaveCallback = null;
 
-                _autoSaveEnabled = value;
+        /// <param name="interval">The auto save interval in seconds.</param>
+        //        public static void StartAutoSave(int? interval = null)
+        //        {
+        //            AutoSaveEnabled = true;
 
-                if (_autoSaveEnabled)
-                    AutoSaveAsync(0);
-            }
-        }
-        /// <summary>
-        /// The autosave interval in seconds.
-        /// </summary>
-        public static int autoSaveInterval = 300;
-        const float autoSaveRetryDelay = 2;
-        private static int retryCount;
-        const int maxRetryTime = 10;
-        public static event Action<bool> AutoSaveCallback = null;
+        //            if (interval != null)
+        //                autoSaveInterval = (int)interval;
+        //        }
+        //        public static void StopAutoSave() => AutoSaveEnabled = false;
+        //        #endregion
+        //        #region internal
+        //        private static async void AutoSaveAsync(float delay = 0)
+        //        {
+        //            if (AutoSaveEnabled == false)
+        //                return;
+
+        //            if (delay > 0)
+        //            {
+        //                await Task.Delay(TimeSpan.FromSeconds(autoSaveInterval));
+        //                if (AutoSaveEnabled == false)
+        //                    return;
+        //            }
+
+        //            var success = await SaveAllAsync();
+        //            if (success)
+        //            {
+        //                retryCount = 0;
+        //                AutoSaveCallback?.Invoke(success);
+        //                AutoSaveAsync(autoSaveInterval);
+        //            }
+        //            else
+        //            {
+        //                if (retryCount == maxRetryTime)
+        //                {
+        //#if UNITY_EDITOR
+        //                    Debug.LogError("Autosave max retry count reached!");
+        //#endif
+        //                    retryCount = 0;
+        //                    AutoSaveCallback?.Invoke(success);
+        //                    AutoSaveAsync(autoSaveInterval);
+        //                    return;
+        //                }
+        //                retryCount++;
+        //                AutoSaveAsync(autoSaveRetryDelay);
+        //            }
+        //        }
+        /// <param name="interval">The auto save interval in seconds.</param>
+        //        public static void StartAutoSave(int? interval = null)
+        //        {
+        //            AutoSaveEnabled = true;
+
+        //            if (interval != null)
+        //                autoSaveInterval = (int)interval;
+        //        }
+        //        public static void StopAutoSave() => AutoSaveEnabled = false;
+        //        #endregion
+        //        #region internal
+        //        private static async void AutoSaveAsync(float delay = 0)
+        //        {
+        //            if (AutoSaveEnabled == false)
+        //                return;
+
+        //            if (delay > 0)
+        //            {
+        //                await Task.Delay(TimeSpan.FromSeconds(autoSaveInterval));
+        //                if (AutoSaveEnabled == false)
+        //                    return;
+        //            }
+
+        //            var success = await SaveAllAsync();
+        //            if (success)
+        //            {
+        //                retryCount = 0;
+        //                AutoSaveCallback?.Invoke(success);
+        //                AutoSaveAsync(autoSaveInterval);
+        //            }
+        //            else
+        //            {
+        //                if (retryCount == maxRetryTime)
+        //                {
+        //#if UNITY_EDITOR
+        //                    Debug.LogError("Autosave max retry count reached!");
+        //#endif
+        //                    retryCount = 0;
+        //                    AutoSaveCallback?.Invoke(success);
+        //                    AutoSaveAsync(autoSaveInterval);
+        //                    return;
+        //                }
+        //                retryCount++;
+        //                AutoSaveAsync(autoSaveRetryDelay);
+        //            }
+        //        }
+        //public static bool AutoSaveEnabled
+        //{
+        //    get => _autoSaveEnabled;
+        //    set
+        //    {
+        //        if (value == _autoSaveEnabled)
+        //            return;
+
+        //        _autoSaveEnabled = value;
+
+        //        if (_autoSaveEnabled)
+        //            AutoSaveAsync(0);
+        //    }
+        //}
+        #endregion
+
 
         //The cache, any data that was loaded or created get cached
         private static readonly Dictionary<Type, IDirtyData> dataDictionary = new Dictionary<Type, IDirtyData>();
@@ -44,6 +141,7 @@ namespace DataSaving
         private static string GetFilePath(Type type) => DirectoryPath + GetFileName(type) + ".txt";
         private static string GetFileName(Type type) => type.ToString().Replace("+", "_");
         private static string GetJson(object saveObj) => JsonUtility.ToJson(saveObj, true);
+        private static string[] GetJsons(object[] saveObj) => Array.ConvertAll(saveObj, (x) => JsonUtility.ToJson(x, true));
         private static bool FileExists(Type type) => File.Exists(GetFilePath(type));
         #endregion
         #region interface
@@ -66,71 +164,30 @@ namespace DataSaving
             else
                 dataDictionary.Add(typeof(T), value);
         }
-        public static void SaveAll(Action<bool> callback = null) => _ = SaveAllAsync(callback);
-        public static async Task<bool> SaveAllAsync(Action<bool> callback = null)
+        public static void SaveAll(Action<bool> callback = null) 
+            => _ = SaveAllAsync(GetJsons(dataDictionary.Values.ToArray()), callback);
+        private static async Task<bool> SaveAllAsync(string[] data, Action<bool> callback = null)
         {
             bool success = true;
-            foreach (var key in dataDictionary.Keys)
-                success &= await SaveAsync(key);
+
+            var keys = dataDictionary.Keys.ToArray();
+            for (int i = 0; i < keys.Length; i++)
+                success &= await SaveAsync(keys[i], data[i]);
+
             callback?.Invoke(success);
             return success;
         }
-        public static void Save(Type type, Action<bool> callback = null) => _ = SaveAsync(type, callback);
-        public static async Task<bool> SaveAsync(Type type, Action<bool> callback = null)
+        public static void Save(Type type, Action<bool> callback = null) => _ = SaveAsync(type, GetJson(dataDictionary[type]), callback);
+        private static async Task<bool> SaveAsync(Type type, string data, Action<bool> callback = null)
         {
-            var task = new Task<bool>(() => TrySave(type));
+            var task = new Task<bool>(() => TrySave(type, data));
             task.Start();
             var success = await task;
             callback?.Invoke(success);
             return success;
         }
-        /// <param name="interval">The auto save interval in seconds.</param>
-        public static void StartAutoSave(int? interval = null)
-        {
-            AutoSaveEnabled = true;
-
-            if (interval != null)
-                autoSaveInterval = (int)interval;
-        }
-        public static void StopAutoSave() => AutoSaveEnabled = false;
-        #endregion
-        #region internal
-        private static async void AutoSaveAsync(float delay = 0)
-        {
-            if (AutoSaveEnabled == false)
-                return;
-
-            if (delay > 0)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(autoSaveInterval));
-                if (AutoSaveEnabled == false)
-                    return;
-            }
-
-            var success = await SaveAllAsync();
-            if (success)
-            {
-                retryCount = 0;
-                AutoSaveCallback?.Invoke(success);
-                AutoSaveAsync(autoSaveInterval);
-            }
-            else
-            {
-                if (retryCount == maxRetryTime)
-                {
-#if UNITY_EDITOR
-                    Debug.LogError("Autosave max retry count reached!");
-#endif
-                    retryCount = 0;
-                    AutoSaveCallback?.Invoke(success);
-                    AutoSaveAsync(autoSaveInterval);
-                    return;
-                }
-                retryCount++;
-                AutoSaveAsync(autoSaveRetryDelay);
-            }
-        }
-        private static bool TrySave(Type type)
+//        
+        private static bool TrySave(Type type, string data)
         {
             if (!type.IsSerializable)
                 throw new InvalidOperationException("A serializable Type is required");
@@ -141,7 +198,6 @@ namespace DataSaving
             if (!objectToSave.IsDirty)
                 return true;
 
-            var data = (GetJson(objectToSave));
             var filePath = GetFilePath(type);
             if (Directory.Exists(DirectoryPath))
                 return Save();
@@ -291,9 +347,9 @@ namespace DataSaving
         }
         public void Clear()
         {
-            if(collection.Count != 0)
+            if (collection.Count != 0)
             {
-            collection.Clear();
+                collection.Clear();
 
                 ValueChanged();
             }
@@ -311,7 +367,7 @@ namespace DataSaving
 
         public bool Remove(T item)
         {
-            if(collection.Remove(item))
+            if (collection.Remove(item))
             {
                 ValueChanged();
                 return true;
@@ -358,10 +414,10 @@ namespace DataSaving
     [Serializable]
     public class DirtyDataList<T> : BaseDirtyList<T> where T : IDirtyData
     {
-        public override bool IsDirty 
-        { 
+        public override bool IsDirty
+        {
             get => base.IsDirty || collection.Exists((X) => X.IsDirty);
-            protected set => base.IsDirty = value; 
+            protected set => base.IsDirty = value;
         }
         protected override void OnSaved()
         {

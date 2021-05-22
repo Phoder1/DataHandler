@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -233,162 +234,118 @@ namespace DataSaving
     public abstract class DirtyData : IDirtyData
     {
         private bool _isDirty = false;
-        public virtual bool IsDirty => _isDirty;
+        public virtual bool IsDirty
+        {
+            get => _isDirty;
+            protected set => Setter(ref _isDirty, value, () => OnDirty?.Invoke(), () => _isDirty);
+        }
 
         public event Action OnDirty;
 
         public void Saved()
         {
-            _isDirty = false;
+            IsDirty = false;
             OnDirty?.Invoke();
             OnSaved();
         }
 
         protected virtual void OnSaved() { }
 
-        public virtual void ValueChanged() => _isDirty = true;
-        protected void Setter<T>(ref T data, T value)
+        public virtual void ValueChanged() => IsDirty = true;
+        protected void Setter<T>(ref T data, T value, Action onValueChanged, Func<bool> changeCondition = null)
         {
             if ((data == null && value == null) || (data != null && data.Equals(value)))
                 return;
             data = value;
 
-            ValueChanged();
+            if (changeCondition == null || changeCondition())
+                onValueChanged?.Invoke();
         }
+        protected void Setter<T>(ref T data, T value) => Setter<T>(ref data, value, ValueChanged);
     }
     #region Lists
     [Serializable]
-    public abstract class BaseDirtyList<T> : List<T>, IDirtyData
+    public abstract class BaseDirtyList<T> : DirtyData, ICollection<T>, IEnumerable<T>, IEnumerable, IList<T>, IReadOnlyCollection<T>, IReadOnlyList<T>
     {
-        protected bool _isDirty;
-
-        public event Action OnDirty;
-
-        public void ValueChanged() => _isDirty = true;
-        public abstract bool IsDirty { get; }
-        public void Saved()
+        #region List
+        [SerializeField]
+        protected List<T> collection = new List<T>();
+        public T this[int index]
         {
-            _isDirty = false;
-            OnDirty?.Invoke();
-        }
-        protected virtual void OnSaved() { }
-        protected abstract void OnValueSet(int index);
-        public new T this[int index]
-        {
-            get => base[index];
+            get => collection[index];
             set
             {
-                base[index] = value;
-                OnValueSet(index);
+                if ((collection[index] == null && value == null) || (collection[index] != null && collection[index].Equals(value)))
+                    return;
+
+                collection[index] = value;
+
+                ValueChanged();
             }
         }
-        public new int Capacity { get; set; }
-        public new void Add(T item)
+        public int Count => collection.Count;
+        public bool IsReadOnly => false;
+        public void Add(T item)
         {
-            base.Add(item);
+            collection.Add(item);
             ValueChanged();
         }
-        public new void Clear()
+        public void Clear()
         {
-            base.Clear();
-            ValueChanged();
-        }
-        public new void AddRange(IEnumerable<T> collection)
-        {
-            base.AddRange(collection);
-            ValueChanged();
-        }
-        public new void Insert(int index, T item)
-        {
-            base.Insert(index, item);
-            ValueChanged();
-        }
-        public new void InsertRange(int index, IEnumerable<T> collection)
-        {
-            base.InsertRange(index, collection);
-            ValueChanged();
-        }
-        public new int RemoveAll(Predicate<T> match)
-        {
-            var x = base.RemoveAll(match);
-            ValueChanged();
-            return x;
-        }
-        public new void RemoveAt(int index)
-        {
-            base.RemoveAt(index);
-            ValueChanged();
-        }
-        public new void RemoveRange(int index, int count)
-        {
-            base.RemoveRange(index, count);
-            ValueChanged();
-        }
-        public new void Reverse(int index, int count)
-        {
-            base.Reverse(index, count);
-            ValueChanged();
-        }
-        public new void Reverse()
-        {
-            base.Reverse();
-            ValueChanged();
-        }
-        public new void Sort(Comparison<T> comparison)
-        {
-            base.Sort(comparison);
-            ValueChanged();
-        }
-        public new void Sort(int index, int count, IComparer<T> comparer)
-        {
-            base.Sort(index, count, comparer);
-            ValueChanged();
-        }
-        public new void Sort()
-        {
-            base.Sort();
-            ValueChanged();
-        }
-        public new void Sort(IComparer<T> comparer)
-        {
-            base.Sort(comparer);
-            ValueChanged();
-        }
-        public new void TrimExcess()
-        {
-            base.TrimExcess();
-            if (Capacity > Count)
+            if(collection.Count != 0)
+            {
+            collection.Clear();
+
                 ValueChanged();
+            }
+        }
+        public bool Contains(T item) => collection.Contains(item);
+        public void CopyTo(T[] array, int arrayIndex) => collection.CopyTo(array, arrayIndex);
+
+        public int IndexOf(T item) => collection.IndexOf(item);
+
+        public void Insert(int index, T item)
+        {
+            collection.Insert(index, item);
+            ValueChanged();
         }
 
+        public bool Remove(T item)
+        {
+            if(collection.Remove(item))
+            {
+                ValueChanged();
+                return true;
+            }
+            return false;
+        }
 
+        public void RemoveAt(int index)
+        {
+            collection.RemoveAt(index);
+            ValueChanged();
+        }
+        public IEnumerator<T> GetEnumerator() => collection.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        #endregion
     }
     [Serializable]
     public class DirtyDataList<T> : BaseDirtyList<T> where T : IDirtyData
     {
-        public override bool IsDirty
-        {
-            get
-            {
-                if (_isDirty)
-                    return true;
-
-                return Exists((x) => IsDirty);
-            }
+        public override bool IsDirty 
+        { 
+            get => base.IsDirty || collection.Exists((X) => X.IsDirty);
+            protected set => base.IsDirty = value; 
         }
-
-        protected override void OnSaved() => ForEach((X) => X.Saved());
-
-        protected override void OnValueSet(int index) => _isDirty |= this[index].IsDirty;
+        protected override void OnSaved()
+        {
+            base.OnSaved();
+            collection.ForEach((X) => X.Saved());
+        }
 
     }
     [Serializable]
-    public class DirtyStructList<T> : BaseDirtyList<T> where T : struct
-    {
-        public override bool IsDirty => _isDirty;
-        protected override void OnValueSet(int index) => _isDirty = true;
-
-    }
+    public class DirtyStructList<T> : BaseDirtyList<T> where T : struct { }
     #endregion
     #endregion
     #region Json Parser

@@ -26,7 +26,9 @@ namespace DataSaving
                     AutoSaveAsync(0);
             }
         }
-
+        /// <summary>
+        /// The autosave interval in seconds.
+        /// </summary>
         public static int autoSaveInterval = 300;
         const float autoSaveRetryDelay = 2;
         private static int retryCount;
@@ -81,6 +83,7 @@ namespace DataSaving
             callback?.Invoke(success);
             return success;
         }
+        /// <param name="interval">The auto save interval in seconds.</param>
         public static void StartAutoSave(int? interval = null)
         {
             AutoSaveEnabled = true;

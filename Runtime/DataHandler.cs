@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -308,6 +309,7 @@ namespace DataSaving
         }
 
         public event Action OnDirty;
+        public event Action OnValueChange;
 
         public void Saved()
         {
@@ -318,9 +320,9 @@ namespace DataSaving
         protected virtual void OnSaved() { }
 
         public virtual void ValueChanged() => IsDirty = true;
-        protected void Setter<T>(ref T data, T value, Action<T> onValueChanged = null)
+        protected void Setter<T>(ref T data, T value, Action<T> onValueChangedAction = null)
         {
-            if (IsDirty && onValueChanged == null)
+            if (IsDirty && onValueChangedAction == null && OnValueChange == null)
             {
                 data = value;
                 return;
@@ -331,7 +333,8 @@ namespace DataSaving
 
             data = value;
 
-            onValueChanged?.Invoke(data);
+            onValueChangedAction?.Invoke(data);
+            OnValueChange?.Invoke();
             ValueChanged();
         }
     }

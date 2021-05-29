@@ -2,9 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
-using System.Linq;
 
 namespace DataSaving
 {
@@ -164,7 +164,7 @@ namespace DataSaving
             else
                 dataDictionary.Add(typeof(T), value);
         }
-        public static void SaveAll(Action<bool> callback = null) 
+        public static void SaveAll(Action<bool> callback = null)
             => _ = SaveAllAsync(GetJsons(dataDictionary.Values.ToArray()), callback);
         private static async Task<bool> SaveAllAsync(string[] data, Action<bool> callback = null)
         {
@@ -186,7 +186,7 @@ namespace DataSaving
             callback?.Invoke(success);
             return success;
         }
-//        
+        //        
         private static bool TrySave(Type type, string data)
         {
             if (!type.IsSerializable)
@@ -293,7 +293,18 @@ namespace DataSaving
         public virtual bool IsDirty
         {
             get => _isDirty;
-            protected set => Setter(ref _isDirty, value, () => OnDirty?.Invoke(), () => _isDirty);
+            protected set
+            {
+                if (IsDirty == value)
+                    return;
+
+                _isDirty = value;
+
+                if (IsDirty)
+                {
+                    OnDirty?.Invoke();
+                }
+            }
         }
 
         public event Action OnDirty;
@@ -301,23 +312,28 @@ namespace DataSaving
         public void Saved()
         {
             IsDirty = false;
-            OnDirty?.Invoke();
             OnSaved();
         }
 
         protected virtual void OnSaved() { }
 
         public virtual void ValueChanged() => IsDirty = true;
-        protected void Setter<T>(ref T data, T value, Action onValueChanged, Func<bool> changeCondition = null)
+        protected void Setter<T>(ref T data, T value, Action<T> onValueChanged = null)
         {
+            if (IsDirty && onValueChanged == null)
+            {
+                data = value;
+                return;
+            }
+
             if ((data == null && value == null) || (data != null && data.Equals(value)))
                 return;
+
             data = value;
 
-            if (changeCondition == null || changeCondition())
-                onValueChanged?.Invoke();
+            onValueChanged?.Invoke(data);
+            ValueChanged();
         }
-        protected void Setter<T>(ref T data, T value) => Setter<T>(ref data, value, ValueChanged);
     }
     #region Lists
     [Serializable]

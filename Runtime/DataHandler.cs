@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -146,6 +145,7 @@ namespace DataSaving
         private static bool FileExists(Type type) => File.Exists(GetFilePath(type));
         #endregion
         #region interface
+        public static T Save<T>(this T data) where T : class, IDirtyData, new() => Save(data);
         public static T GetData<T>() where T : class, IDirtyData, new()
         {
             if (dataDictionary.TryGetValue(typeof(T), out IDirtyData instance))
@@ -377,6 +377,11 @@ namespace DataSaving
         public void CopyTo(T[] array, int arrayIndex) => collection.CopyTo(array, arrayIndex);
 
         public int IndexOf(T item) => collection.IndexOf(item);
+        public T Find(Predicate<T> match) => collection.Find(match);
+        public T FindLast(Predicate<T> match) => collection.FindLast(match);
+        public int FindLastIndex(int startIndex, int count, Predicate<T> match) => collection.FindLastIndex(startIndex, count, match);
+        public int FindLastIndex(int startIndex, Predicate<T> match) => collection.FindLastIndex(startIndex, match);
+        public int FindLastIndex(Predicate<T> match) => collection.FindLastIndex(match);
 
         public void Insert(int index, T item)
         {

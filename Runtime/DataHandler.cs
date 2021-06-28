@@ -346,9 +346,9 @@ namespace DataSaving
         public List<T> collection = new List<T>();
 
         public BaseDirtyList() { }
-        public BaseDirtyList(bool dirty = true)
+        public BaseDirtyList(bool isDirty = true)
         {
-            IsDirty = dirty;
+            IsDirty = isDirty;
         }
 
         public T this[int index]
@@ -445,6 +445,12 @@ namespace DataSaving
     [Serializable]
     public class DirtyDataList<T> : BaseDirtyList<T> where T : IDirtyData
     {
+        public DirtyDataList() { }
+        public DirtyDataList(bool isDirty = true)
+        {
+            IsDirty = isDirty;
+        }
+
         public override bool IsDirty
         {
             get => base.IsDirty || collection.Exists((X) => X.IsDirty);
@@ -458,7 +464,14 @@ namespace DataSaving
 
     }
     [Serializable]
-    public class DirtyStructList<T> : BaseDirtyList<T> where T : struct { }
+    public class DirtyStructList<T> : BaseDirtyList<T> where T : struct 
+    {
+        public DirtyStructList() { }
+        public DirtyStructList(bool isDirty = true)
+        {
+            IsDirty = isDirty;
+        }
+    }
     #endregion
     #endregion
     #region Json Parser

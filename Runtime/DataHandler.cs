@@ -344,6 +344,13 @@ namespace DataSaving
     {
         #region List
         public List<T> collection = new List<T>();
+
+        public BaseDirtyList() { }
+        public BaseDirtyList(bool dirty = true)
+        {
+            IsDirty = dirty;
+        }
+
         public T this[int index]
         {
             get => collection[index];

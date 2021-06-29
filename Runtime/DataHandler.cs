@@ -137,12 +137,13 @@ namespace DataSaving
         private static readonly Dictionary<Type, IDirtyData> dataDictionary = new Dictionary<Type, IDirtyData>();
         #region Naming Conventions
         //Naming conventions are used to consistently determin the directory in which you save the data by it's type
-        private static string DirectoryPath => persistentPath + "/Saves/";
-        private static string GetFilePath(Type type) => DirectoryPath + GetFileName(type) + ".txt";
-        private static string GetFileName(Type type) => type.ToString().Replace("+", "_");
-        private static string GetJson(object saveObj) => JsonUtility.ToJson(saveObj, true);
-        private static string[] GetJsons(object[] saveObj) => Array.ConvertAll(saveObj, (x) => JsonUtility.ToJson(x, true));
-        private static bool FileExists(Type type) => File.Exists(GetFilePath(type));
+        public static string DirectoryPath => persistentPath + "/Saves/";
+        public static string GetFilePath(Type type) => DirectoryPath + GetFileName(type) + ".txt";
+        public static string GetFileName(Type type) => type.ToString().Replace("+", "_");
+        public static string GetJson(object saveObj) => JsonUtility.ToJson(saveObj, true);
+        public static string[] GetJsons(object[] saveObj) => Array.ConvertAll(saveObj, (x) => JsonUtility.ToJson(x, true));
+        public static bool DirectoryExists(string path) => Directory.Exists(path);
+        public static bool FileExists(Type type) => File.Exists(GetFilePath(type));
         #endregion
         #region interface
         public static T Save<T>(this T data) where T : class, IDirtyData, new() => Save(data);
@@ -187,7 +188,6 @@ namespace DataSaving
             callback?.Invoke(success);
             return success;
         }
-        //        
         private static bool TrySave(Type type, string data)
         {
             if (!type.IsSerializable)
@@ -271,6 +271,22 @@ namespace DataSaving
                 return false;
 
             return true;
+        }
+        public static void ClearAllSavedData()
+        {
+            lock (WriteReadLock)
+            {
+                try
+                {
+                    var files = Directory.GetFiles(DirectoryPath);
+                    foreach (var file in files)
+                        File.Delete(file);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e.Message);
+                }
+            }
         }
         #endregion
     }

@@ -146,7 +146,8 @@ namespace DataSaving
         public static bool FileExists(Type type) => File.Exists(GetFilePath(type));
         #endregion
         #region interface
-        public static T Save<T>(this T data) where T : class, IDirtyData, new() => Save(data);
+        public static void Save<T>(this T refrence, Action<bool> callback = null) where T : class, IDirtyData, new() => refrence.GetType().Save(callback);
+        public static void Save<T>(Action<bool> callback = null) where T : class, IDirtyData, new() => typeof(T).Save(callback);
         public static T GetData<T>() where T : class, IDirtyData, new()
         {
             if (dataDictionary.TryGetValue(typeof(T), out IDirtyData instance))
@@ -179,7 +180,7 @@ namespace DataSaving
             callback?.Invoke(success);
             return success;
         }
-        public static void Save(Type type, Action<bool> callback = null) => _ = SaveAsync(type, GetJson(dataDictionary[type]), callback);
+        public static void Save(this Type type, Action<bool> callback = null) => _ = SaveAsync(type, GetJson(dataDictionary[type]), callback);
         private static async Task<bool> SaveAsync(Type type, string data, Action<bool> callback = null)
         {
             var task = new Task<bool>(() => TrySave(type, data));

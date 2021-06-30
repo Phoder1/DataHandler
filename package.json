@@ -1,6 +1,6 @@
 {
   "name": "com.alontalmi.datahandler",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "displayName": "Data Handler",
   "description": "A relativly simple to use data save and load system with data caching.",
   "keywords": [

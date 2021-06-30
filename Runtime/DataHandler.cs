@@ -134,7 +134,7 @@ namespace DataSaving
 
 
         //The cache, any data that was loaded or created get cached
-        private static readonly Dictionary<Type, IDirtyData> dataDictionary = new Dictionary<Type, IDirtyData>();
+        private static readonly Dictionary<Type, ISaveable> dataDictionary = new Dictionary<Type, ISaveable>();
         #region Naming Conventions
         //Naming conventions are used to consistently determin the directory in which you save the data by it's type
         public static string DirectoryPath => persistentPath + "/Saves/";
@@ -146,11 +146,11 @@ namespace DataSaving
         public static bool FileExists(Type type) => File.Exists(GetFilePath(type));
         #endregion
         #region interface
-        public static void Save<T>(this T refrence, Action<bool> callback = null) where T : class, IDirtyData, new() => refrence.GetType().Save(callback);
-        public static void Save<T>(Action<bool> callback = null) where T : class, IDirtyData, new() => typeof(T).Save(callback);
-        public static T GetData<T>() where T : class, IDirtyData, new()
+        public static void Save<T>(this T refrence, Action<bool> callback = null) where T : class, ISaveable, new() => refrence.GetType().Save(callback);
+        public static void Save<T>(Action<bool> callback = null) where T : class, ISaveable, new() => typeof(T).Save(callback);
+        public static T GetData<T>() where T : class, ISaveable, new()
         {
-            if (dataDictionary.TryGetValue(typeof(T), out IDirtyData instance))
+            if (dataDictionary.TryGetValue(typeof(T), out ISaveable instance))
                 return (T)instance;
 
             if (!TryLoad(out T item))
@@ -160,7 +160,7 @@ namespace DataSaving
 
             return item;
         }
-        public static void SetData<T>(T value) where T : class, IDirtyData, new()
+        public static void SetData<T>(T value) where T : class, ISaveable, new()
         {
             if (dataDictionary.ContainsKey(typeof(T)))
                 dataDictionary[typeof(T)] = value;
@@ -194,7 +194,7 @@ namespace DataSaving
             if (!type.IsSerializable)
                 throw new InvalidOperationException("A serializable Type is required");
 
-            if (!dataDictionary.TryGetValue(type, out IDirtyData objectToSave))
+            if (!dataDictionary.TryGetValue(type, out ISaveable objectToSave))
                 return false;
 
             if (!objectToSave.IsDirty)
@@ -221,7 +221,7 @@ namespace DataSaving
                         Debug.LogError(e.Message);
                         return false;
                     }
-                    objectToSave.Saved();
+                    objectToSave.Clean();
                     Debug.Log("Saved");
                     return true;
                 }
@@ -243,7 +243,7 @@ namespace DataSaving
                 }
             }
         }
-        private static bool TryLoad<T>(out T objectToLoad) where T : class, IDirtyData, new()
+        private static bool TryLoad<T>(out T objectToLoad) where T : class, ISaveable, new()
         {
             objectToLoad = default;
             string filePath = GetFilePath(typeof(T));
@@ -301,10 +301,11 @@ namespace DataSaving
     public interface IDirtyData
     {
         bool IsDirty { get; }
-        void Saved();
+        void Clean();
         void ValueChanged();
         event Action OnDirty;
     }
+    public interface ISaveable : IDirtyData { }
     public abstract class DirtyData : IDirtyData
     {
         private bool _isDirty = false;
@@ -328,7 +329,7 @@ namespace DataSaving
         public event Action OnDirty;
         public event Action OnValueChange;
 
-        public void Saved()
+        public void Clean()
         {
             IsDirty = false;
             OnSaved();
@@ -476,7 +477,7 @@ namespace DataSaving
         protected override void OnSaved()
         {
             base.OnSaved();
-            collection.ForEach((X) => X.Saved());
+            collection.ForEach((X) => X.Clean());
         }
 
     }

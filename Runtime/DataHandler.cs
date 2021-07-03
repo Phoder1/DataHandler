@@ -332,10 +332,10 @@ namespace DataSaving
         public void Clean()
         {
             IsDirty = false;
-            OnSaved();
+            OnClean();
         }
 
-        protected virtual void OnSaved() { }
+        protected virtual void OnClean() { }
 
         public virtual void ValueChanged() => IsDirty = true;
         protected void Setter<T>(ref T data, T value, Action<T> onValueChangedAction = null)
@@ -474,9 +474,9 @@ namespace DataSaving
             get => base.IsDirty || collection.Exists((X) => X.IsDirty);
             protected set => base.IsDirty = value;
         }
-        protected override void OnSaved()
+        protected override void OnClean()
         {
-            base.OnSaved();
+            base.OnClean();
             collection.ForEach((X) => X.Clean());
         }
 

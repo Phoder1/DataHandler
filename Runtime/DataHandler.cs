@@ -148,7 +148,7 @@ namespace DataSaving
         #region interface
         public static void Save<T>(this T refrence, Action<bool> callback = null) where T : class, ISaveable, new() => refrence.GetType().Save(callback);
         public static void Save<T>(Action<bool> callback = null) where T : class, ISaveable, new() => typeof(T).Save(callback);
-        public static T GetData<T>() where T : class, ISaveable, new()
+        public static T Load<T>() where T : class, ISaveable, new()
         {
             if (dataDictionary.TryGetValue(typeof(T), out ISaveable instance))
                 return (T)instance;
@@ -160,12 +160,23 @@ namespace DataSaving
 
             return item;
         }
-        public static void SetData<T>(T value) where T : class, ISaveable, new()
+        public static void Load<T>(out T data) where T : class, ISaveable, new() => data = Load<T>();
+        public static void OverrideData<T>(T value) where T : class, ISaveable, new()
         {
+
             if (dataDictionary.ContainsKey(typeof(T)))
-                dataDictionary[typeof(T)] = value;
+            {
+                if (dataDictionary[typeof(T)] != value)
+                {
+                    value.ValueChanged();
+                    dataDictionary[typeof(T)] = value;
+                }
+            }
             else
+            {
+                value.ValueChanged();
                 dataDictionary.Add(typeof(T), value);
+            }
         }
         public static void SaveAll(Action<bool> callback = null)
             => _ = SaveAllAsync(GetJsons(dataDictionary.Values.ToArray()), callback);
@@ -482,7 +493,7 @@ namespace DataSaving
 
     }
     [Serializable]
-    public class DirtyStructList<T> : BaseDirtyList<T> where T : struct 
+    public class DirtyStructList<T> : BaseDirtyList<T> where T : struct
     {
         public DirtyStructList() { }
         public DirtyStructList(bool isDirty = true)

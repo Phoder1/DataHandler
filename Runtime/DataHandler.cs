@@ -137,12 +137,10 @@ namespace DataSaving
         private static readonly Dictionary<Type, ISaveable> dataDictionary = new Dictionary<Type, ISaveable>();
         #region Naming Conventions
         //Naming conventions are used to consistently determin the directory in which you save the data by it's type
-        private static string profile = string.Empty;
-        public static string Profile { get => profile; set => profile = value; }
         public static string DirectoryPath => persistentPath + "/Saves/";
 
 
-        public static string GetFilePath(Type type) => DirectoryPath + "/"+ (Profile == string.Empty ? "Default" : Profile) +"/" + GetFileName(type) + ".txt";
+        public static string GetFilePath(Type type) => DirectoryPath + GetFileName(type) + ".txt";
         public static string GetFileName(Type type) => type.ToString().Replace("+", "_");
         public static string GetJson(object saveObj) => JsonUtility.ToJson(saveObj, true);
         public static string[] GetJsons(object[] saveObj) => Array.ConvertAll(saveObj, (x) => JsonUtility.ToJson(x, true));
@@ -183,8 +181,6 @@ namespace DataSaving
                 }
             }
         }
-        public static void SetActiveProfile(string profile) => Profile = profile;
-        //TODO: add: string[] GetActiveProfiles() in order to see what profiles are currently active.
         #region Save
         public static void SaveAll(Action<bool> callback = null)
             => _ = SaveAllAsync(GetJsons(dataDictionary.Values.ToArray()), callback);
@@ -287,12 +283,14 @@ namespace DataSaving
                 }
             }
         }
-        private static bool TryLoad<T>(out T objectToLoad) where T : class, ISaveable, new()
+        private static bool TryLoad(out object objectToLoad, Type type) => TryLoad(out objectToLoad, type);
+        private static bool TryLoad<T>(out T objectToLoad) where T : class, ISaveable, new() => TryLoad(out objectToLoad, typeof(T));
+        private static bool TryLoad<T>(out T objectToLoad, Type type)
         {
             objectToLoad = default;
-            string filePath = GetFilePath(typeof(T));
+            string filePath = GetFilePath(type);
 
-            if (!FileExists(typeof(T)))
+            if (!FileExists(type))
                 return false;
 
             string json = "";
@@ -333,10 +331,18 @@ namespace DataSaving
         void ValueChanged();
         event Action OnDirty;
     }
-    public interface ISaveable : IDirtyData { }
+    public interface ISaveable : IDirtyData 
+    {
+    }
     public abstract class DirtyData : IDirtyData
     {
         private bool _isDirty = false;
+
+        protected DirtyData(bool isDirty = true)
+        {
+            IsDirty = isDirty;
+        }
+
         public virtual bool IsDirty
         {
             get => _isDirty;
@@ -389,12 +395,7 @@ namespace DataSaving
     {
         #region List
         public List<T> collection = new List<T>();
-
-        public BaseDirtyList() { }
-        public BaseDirtyList(bool isDirty = true)
-        {
-            IsDirty = isDirty;
-        }
+        protected BaseDirtyList(bool isDirty = true) : base(isDirty) { }
 
         public T this[int index]
         {
@@ -490,11 +491,7 @@ namespace DataSaving
     [Serializable]
     public class DirtyDataList<T> : BaseDirtyList<T> where T : IDirtyData
     {
-        public DirtyDataList() { }
-        public DirtyDataList(bool isDirty = true)
-        {
-            IsDirty = isDirty;
-        }
+        public DirtyDataList(bool isDirty = true) : base(isDirty) { }
 
         public override bool IsDirty
         {
@@ -511,11 +508,7 @@ namespace DataSaving
     [Serializable]
     public class DirtyStructList<T> : BaseDirtyList<T> where T : struct
     {
-        public DirtyStructList() { }
-        public DirtyStructList(bool isDirty = true)
-        {
-            IsDirty = isDirty;
-        }
+        public DirtyStructList(bool isDirty = true) : base(isDirty) { }
     }
     #endregion
     #endregion

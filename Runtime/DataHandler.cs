@@ -137,8 +137,12 @@ namespace DataSaving
         private static readonly Dictionary<Type, ISaveable> dataDictionary = new Dictionary<Type, ISaveable>();
         #region Naming Conventions
         //Naming conventions are used to consistently determin the directory in which you save the data by it's type
+        private static string profile = string.Empty;
+        public static string Profile { get => profile; set => profile = value; }
         public static string DirectoryPath => persistentPath + "/Saves/";
-        public static string GetFilePath(Type type) => DirectoryPath + GetFileName(type) + ".txt";
+
+
+        public static string GetFilePath(Type type) => DirectoryPath + "/"+ (Profile == string.Empty ? "Default" : Profile) +"/" + GetFileName(type) + ".txt";
         public static string GetFileName(Type type) => type.ToString().Replace("+", "_");
         public static string GetJson(object saveObj) => JsonUtility.ToJson(saveObj, true);
         public static string[] GetJsons(object[] saveObj) => Array.ConvertAll(saveObj, (x) => JsonUtility.ToJson(x, true));
@@ -146,21 +150,6 @@ namespace DataSaving
         public static bool FileExists(Type type) => File.Exists(GetFilePath(type));
         #endregion
         #region interface
-        public static void Save<T>(this T refrence, Action<bool> callback = null) where T : class, ISaveable, new() => refrence.GetType().Save(callback);
-        public static void Save<T>(Action<bool> callback = null) where T : class, ISaveable, new() => typeof(T).Save(callback);
-        public static T Load<T>() where T : class, ISaveable, new()
-        {
-            if (dataDictionary.TryGetValue(typeof(T), out ISaveable instance))
-                return (T)instance;
-
-            if (!TryLoad(out T item))
-                item = new T();
-
-            dataDictionary.Add(typeof(T), item);
-
-            return item;
-        }
-        public static void Load<T>(out T data) where T : class, ISaveable, new() => data = Load<T>();
         public static void OverrideData<T>(T value) where T : class, ISaveable, new()
         {
 
@@ -178,8 +167,53 @@ namespace DataSaving
                 dataDictionary.Add(typeof(T), value);
             }
         }
+        public static void ClearAllSavedData()
+        {
+            lock (WriteReadLock)
+            {
+                try
+                {
+                    var files = Directory.GetFiles(DirectoryPath);
+                    foreach (var file in files)
+                        File.Delete(file);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e.Message);
+                }
+            }
+        }
+        public static void SetActiveProfile(string profile) => Profile = profile;
+        //TODO: add: string[] GetActiveProfiles() in order to see what profiles are currently active.
+        #region Save
         public static void SaveAll(Action<bool> callback = null)
             => _ = SaveAllAsync(GetJsons(dataDictionary.Values.ToArray()), callback);
+        public static void Save<T>(this T refrence, Action<bool> callback = null) where T : class, ISaveable, new() => refrence.GetType().Save(callback);
+        public static void Save<T>(Action<bool> callback = null) where T : class, ISaveable, new() => typeof(T).Save(callback);
+        public static void Save(this Type type, Action<bool> callback = null) => _ = SaveAsync(type, GetJson(dataDictionary[type]), callback);
+        #endregion
+        #region Load
+        public static T Load<T>() where T : class, ISaveable, new()
+        {
+            if (dataDictionary.TryGetValue(typeof(T), out ISaveable instance))
+                return (T)instance;
+
+            if (!TryLoad(out T item))
+                item = new T();
+
+            dataDictionary.Add(typeof(T), item);
+
+            return item;
+        }
+        public static void Load<T>(out T data) where T : class, ISaveable, new() => data = Load<T>();
+        #endregion
+        #region Cache
+        public static void Cache<T>() where T : class, ISaveable, new() => Load<T>();
+        public static void Cache<T>(this T refrence) where T : class, ISaveable, new() => Load<T>();
+        #endregion
+
+        #endregion
+        #region Internal
         private static async Task<bool> SaveAllAsync(string[] data, Action<bool> callback = null)
         {
             bool success = true;
@@ -191,7 +225,6 @@ namespace DataSaving
             callback?.Invoke(success);
             return success;
         }
-        public static void Save(this Type type, Action<bool> callback = null) => _ = SaveAsync(type, GetJson(dataDictionary[type]), callback);
         private static async Task<bool> SaveAsync(Type type, string data, Action<bool> callback = null)
         {
             var task = new Task<bool>(() => TrySave(type, data));
@@ -284,22 +317,6 @@ namespace DataSaving
 
             return true;
         }
-        public static void ClearAllSavedData()
-        {
-            lock (WriteReadLock)
-            {
-                try
-                {
-                    var files = Directory.GetFiles(DirectoryPath);
-                    foreach (var file in files)
-                        File.Delete(file);
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError(e.Message);
-                }
-            }
-        }
         #endregion
     }
     #endregion
@@ -336,7 +353,6 @@ namespace DataSaving
                 }
             }
         }
-
         public event Action OnDirty;
         public event Action OnValueChange;
 

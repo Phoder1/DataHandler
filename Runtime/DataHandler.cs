@@ -328,6 +328,7 @@ namespace DataSaving
         void Clean();
         void ValueChanged();
         event Action OnDirty;
+        event Action OnValueChange;
     }
     public interface ISaveable : IDirtyData 
     {
@@ -368,7 +369,11 @@ namespace DataSaving
 
         protected virtual void OnClean() { }
 
-        public virtual void ValueChanged() => IsDirty = true;
+        public virtual void ValueChanged()
+        {
+            OnValueChange?.Invoke();
+            IsDirty = true;
+        }
         protected void Setter<T>(ref T data, T value, Action<T> onValueChangedAction = null)
         {
             if (IsDirty && onValueChangedAction == null && OnValueChange == null)
@@ -383,7 +388,6 @@ namespace DataSaving
             data = value;
 
             onValueChangedAction?.Invoke(data);
-            OnValueChange?.Invoke();
             ValueChanged();
         }
     }
@@ -489,7 +493,10 @@ namespace DataSaving
     [Serializable]
     public class DirtyDataList<T> : BaseDirtyList<T> where T : IDirtyData
     {
-        public DirtyDataList(bool isDirty = true) : base(isDirty) { }
+        public DirtyDataList(bool isDirty = true) : base(isDirty) 
+        {
+            collection.ForEach((x) => x.OnValueChange += ValueChanged);
+        }
 
         public override bool IsDirty
         {

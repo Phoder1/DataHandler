@@ -138,8 +138,6 @@ namespace DataSaving
         #region Naming Conventions
         //Naming conventions are used to consistently determin the directory in which you save the data by it's type
         public static string DirectoryPath => persistentPath + "/Saves/";
-
-
         public static string GetFilePath(Type type) => DirectoryPath + GetFileName(type) + ".txt";
         public static string GetFileName(Type type) => type.ToString().Replace("+", "_");
         public static string GetJson(object saveObj) => JsonUtility.ToJson(saveObj, true);
@@ -188,7 +186,12 @@ namespace DataSaving
         public static void Save<T>(Action<bool> callback = null) where T : class, ISaveable, new() => typeof(T).Save(callback);
         public static void Save(this Type type, Action<bool> callback = null) => _ = SaveAsync(type, GetJson(dataDictionary[type]), callback);
         #endregion
+        #region Cache
+        public static void Cache<T>() where T : class, ISaveable, new() => Load<T>();
+        public static void Cache<T>(this T refrence) where T : class, ISaveable, new() => Load<T>();
+        #endregion
         #region Load
+        public static void Load<T>(out T data) where T : class, ISaveable, new() => data = Load<T>();
         public static T Load<T>() where T : class, ISaveable, new()
         {
             if (dataDictionary.TryGetValue(typeof(T), out ISaveable instance))
@@ -201,13 +204,7 @@ namespace DataSaving
 
             return item;
         }
-        public static void Load<T>(out T data) where T : class, ISaveable, new() => data = Load<T>();
         #endregion
-        #region Cache
-        public static void Cache<T>() where T : class, ISaveable, new() => Load<T>();
-        public static void Cache<T>(this T refrence) where T : class, ISaveable, new() => Load<T>();
-        #endregion
-
         #endregion
         #region Internal
         private static async Task<bool> SaveAllAsync(string[] data, Action<bool> callback = null)
@@ -226,6 +223,7 @@ namespace DataSaving
             var task = new Task<bool>(() => TrySave(type, data));
             task.Start();
             var success = await task;
+
             callback?.Invoke(success);
             return success;
         }

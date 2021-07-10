@@ -235,6 +235,8 @@ namespace DataSaving
             if (!dataDictionary.TryGetValue(type, out ISaveable objectToSave))
                 return false;
 
+            objectToSave.BeforeSave();
+
             if (!objectToSave.IsDirty)
                 return true;
 
@@ -260,7 +262,9 @@ namespace DataSaving
                         return false;
                     }
                     objectToSave.Clean();
-                    Debug.Log("Saved");
+#if UNITY_EDITOR
+                    Debug.Log("Saved " + objectToSave.GetType().ToString());
+#endif
                     return true;
                 }
             }
@@ -330,8 +334,9 @@ namespace DataSaving
         event Action OnDirty;
         event Action OnValueChange;
     }
-    public interface ISaveable : IDirtyData 
+    public interface ISaveable : IDirtyData
     {
+        void BeforeSave();
     }
     public abstract class DirtyData : IDirtyData
     {
@@ -493,7 +498,7 @@ namespace DataSaving
     [Serializable]
     public class DirtyDataList<T> : BaseDirtyList<T> where T : IDirtyData
     {
-        public DirtyDataList(bool isDirty = true) : base(isDirty) 
+        public DirtyDataList(bool isDirty = true) : base(isDirty)
         {
             collection.ForEach((x) => x.OnValueChange += ValueChanged);
         }

@@ -265,6 +265,7 @@ namespace DataSaving
 #if UNITY_EDITOR
                     Debug.Log("Saved " + objectToSave.GetType().ToString());
 #endif
+                    objectToSave.AfterSave();
                     return true;
                 }
             }
@@ -337,6 +338,9 @@ namespace DataSaving
     public interface ISaveable : IDirtyData
     {
         void BeforeSave();
+        void AfterSave();
+        event Action OnSaveStarted;
+        event Action OnSaveFinished;
     }
     public abstract class DirtyData : IDirtyData
     {

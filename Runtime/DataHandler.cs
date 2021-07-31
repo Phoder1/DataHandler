@@ -179,6 +179,13 @@ namespace DataSaving
                 }
             }
         }
+        public static T Getter<T>(ref T instance) where T : class, ISaveable, new()
+        {
+            if (instance != null)
+                return instance;
+
+            return instance = Load<T>();
+        }
         #region Save
         public static void SaveAll(Action<bool> callback = null)
             => _ = SaveAllAsync(GetJsons(dataDictionary.Values.ToArray()), callback);

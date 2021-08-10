@@ -430,12 +430,12 @@ namespace DataSaving
         }
         public int Count => collection.Count;
         public bool IsReadOnly => false;
-        public void Add(T item)
+        public virtual void Add(T item)
         {
             collection.Add(item);
             ValueChanged();
         }
-        public void Clear()
+        public virtual void Clear()
         {
             if (collection.Count != 0)
             {
@@ -454,13 +454,13 @@ namespace DataSaving
         public int FindLastIndex(int startIndex, Predicate<T> match) => collection.FindLastIndex(startIndex, match);
         public int FindLastIndex(Predicate<T> match) => collection.FindLastIndex(match);
 
-        public void Insert(int index, T item)
+        public virtual void Insert(int index, T item)
         {
             collection.Insert(index, item);
             ValueChanged();
         }
 
-        public bool Remove(T item)
+        public virtual bool Remove(T item)
         {
             if (collection.Remove(item))
             {
@@ -470,7 +470,7 @@ namespace DataSaving
             return false;
         }
 
-        public void RemoveAt(int index)
+        public virtual void RemoveAt(int index)
         {
             collection.RemoveAt(index);
             ValueChanged();
@@ -519,6 +519,40 @@ namespace DataSaving
             get => base.IsDirty || collection.Exists((X) => X.IsDirty);
             protected set => base.IsDirty = value;
         }
+
+        public override void Add(T item)
+        {
+            base.Add(item);
+            item.OnValueChange += ValueChanged;
+        }
+
+        public override void Clear()
+        {
+            collection.ForEach((x) => x.OnValueChange -= ValueChanged);
+
+            base.Clear();
+        }
+
+        public override void Insert(int index, T item)
+        {
+            base.Insert(index, item);
+            item.OnValueChange += ValueChanged;
+        }
+
+        public override bool Remove(T item)
+        {
+            item.OnValueChange -= ValueChanged;
+
+            return base.Remove(item);
+        }
+
+        public override void RemoveAt(int index)
+        {
+            collection[index].OnValueChange -= ValueChanged;
+
+            base.RemoveAt(index);
+        }
+
         protected override void OnClean()
         {
             base.OnClean();

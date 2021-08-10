@@ -507,7 +507,7 @@ namespace DataSaving
         #endregion
     }
     [Serializable]
-    public class DirtyDataList<T> : BaseDirtyList<T> where T : IDirtyData
+    public class DirtyDataList<T> : BaseDirtyList<T>, ISerializationCallbackReceiver where T : IDirtyData
     {
         public DirtyDataList(bool isDirty = true) : base(isDirty)
         {
@@ -537,6 +537,16 @@ namespace DataSaving
         {
             base.Insert(index, item);
             item.OnValueChange += ValueChanged;
+        }
+
+        public void OnAfterDeserialize()
+        {
+            collection.ForEach((x) => x.OnValueChange += ValueChanged);
+        }
+
+        public void OnBeforeSerialize()
+        {
+            collection.ForEach((x) => x.OnValueChange -= ValueChanged);
         }
 
         public override bool Remove(T item)
